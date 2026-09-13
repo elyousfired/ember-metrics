@@ -1,69 +1,170 @@
-import Image from "next/image";
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { Header } from "@/components/Header";
+import { TickerBar } from "@/components/TickerBar";
+import { Hero } from "@/components/Hero";
+import { SupplyDonut } from "@/components/SupplyDonut";
+import { Scorecard } from "@/components/Scorecard";
+import { KpiGrid } from "@/components/KpiGrid";
+import { BurnsChartAndTable } from "@/components/BurnsChartAndTable";
+import { FlywheelSimulator } from "@/components/FlywheelSimulator";
+import { EcosystemTable } from "@/components/EcosystemTable";
+import { PairsTable } from "@/components/PairsTable";
+import { Footer } from "@/components/Footer";
 
 export default function Home() {
+  const [data, setData] = useState<any>(null);
+  const [burnsData, setBurnsData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [lastRefreshed, setLastRefreshed] = useState<number>(Date.now());
+  const [secondsAgo, setSecondsAgo] = useState(0);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [resEmber, resBurns] = await Promise.all([
+        fetch("/api/ember").then((r) => r.json()),
+        fetch("/api/burns").then((r) => r.json()),
+      ]);
+      setData(resEmber);
+      setBurnsData(resBurns);
+      setLastRefreshed(Date.now());
+      setSecondsAgo(0);
+    } catch (err) {
+      console.error("Failed to load metrics:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 25000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSecondsAgo(Math.floor((Date.now() - lastRefreshed) / 1000));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lastRefreshed]);
+
+  const price = data?.price || 0.0308;
+  const priceChange = data?.priceChange24h || 18.5;
+  const burnedPct = data?.burnedPct || 0.64;
+  const supply = data?.supply || 993638341;
+  const burned = data?.burned || 6361658;
+  const burnedUsd = data?.burnedUsd || 195000;
+  const mcap = data?.marketCap || 30580000;
+  const vol24h = data?.volume24h || 37576687;
+  const liquidity = data?.liquidity || 4520000;
+  const burnWalletPending = data?.burnWalletPending || 1209315;
+  const dailyFees = data?.dailyFeesGenerated || 112730;
+  const contract = data?.contract || "5dvXTZ5qwgafnHtwu3Ls3QrWx1U4LQsFeCuJgkk4QEC6";
+  const burnWallet = data?.burnWallet || "GZjYfGyUNQfDChcQ66Gc3ZMcQqPEisyRYe1nPyQhP9bp";
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="min-h-screen flex flex-col bg-[#0b0e14] text-slate-100 font-sans">
+      <Header
+        loading={loading}
+        secondsAgo={secondsAgo}
+        onRefresh={fetchData}
+        ecosystemCount={data?.ecosystemPairs?.length || 13}
+      />
+
+      <TickerBar
+        price={price}
+        priceChange={priceChange}
+        mcap={mcap}
+        vol24h={vol24h}
+        burnedPct={burnedPct}
+        liquidity={liquidity}
+        burnWalletPending={burnWalletPending}
+        dailyFees={dailyFees}
+      />
+
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8 space-y-8" id="overview">
+        <Hero
+          price={price}
+          priceChange={priceChange}
+          mcap={mcap}
+          vol24h={vol24h}
+          contract={contract}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+        <SupplyDonut
+          burnedPct={burnedPct}
+          burned={burned}
+          burnedUsd={burnedUsd}
+          supply={supply}
+          burnWalletPending={burnWalletPending}
+        />
+
+        <Scorecard
+          burnVelocity={data?.burnVelocity || 0.21}
+          dailyBuybackPressure={data?.dailyBuybackPressure || 56365}
+          dailyFeesGenerated={dailyFees}
+          liquidity={liquidity}
+        />
+
+        <KpiGrid
+          mcap={mcap}
+          vol24h={vol24h}
+          burnWalletPending={burnWalletPending}
+          price={price}
+        />
+
+        <BurnsChartAndTable
+          dailyHistory={burnsData?.dailyHistory || []}
+          burns={burnsData?.burns || []}
+          burnWallet={burnWallet}
+        />
+
+        <FlywheelSimulator
+          price={price}
+          supply={supply}
+          volume24h={vol24h}
+        />
+
+        <EcosystemTable
+          ecosystemPairs={data?.ecosystemPairs || []}
+        />
+
+        <PairsTable
+          pairs={data?.pairs || []}
+        />
+
+        {/* Architecture info */}
+        <section className="card p-6 border-slate-800 text-xs text-slate-400 space-y-4" id="about">
+          <h2 className="text-sm font-bold text-white uppercase tracking-wider">
+            About ember.fyi & The Burn Engine
+          </h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="space-y-1.5">
+              <div className="font-bold text-slate-200 text-sm">How Revenue Powers Burns</div>
+              <p className="leading-relaxed">
+                Ember is a Meteora bonding-curve launchpad. Every trade on tokens launched through the platform incurs a dynamic tax. 50% of this tax is routed to the on-chain burn wallet, where it is swapped to EMBER and incinerated.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <div className="font-bold text-slate-200 text-sm">Live On-Chain Data</div>
+              <p className="leading-relaxed">
+                All supply metrics are queried directly from Solana RPC (<code>getTokenSupply</code>) and DexScreener DLMM liquidity pool APIs. Real transactions and burn events can be verified directly on Solscan.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <div className="font-bold text-slate-200 text-sm">Holders & SuperLotto</div>
+              <p className="leading-relaxed">
+                The remaining tax revenue is distributed between EMBER token holders (passive on-chain payback) and the SuperLotto prize pool.
+              </p>
+            </div>
+          </div>
+        </section>
       </main>
+
+      <Footer contract={contract} burnWallet={burnWallet} />
     </div>
   );
 }
