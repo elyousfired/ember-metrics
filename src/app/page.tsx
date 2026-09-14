@@ -7,7 +7,9 @@ import { Hero } from "@/components/Hero";
 import { SupplyDonut } from "@/components/SupplyDonut";
 import { Scorecard } from "@/components/Scorecard";
 import { KpiGrid } from "@/components/KpiGrid";
-import { BurnsChartAndTable } from "@/components/BurnsChartAndTable";
+import { PriceCandleChart } from "@/components/PriceCandleChart";
+import { DailyBuybacksChart } from "@/components/DailyBuybacksChart";
+import { RecentBurnsTable } from "@/components/RecentBurnsTable";
 import { FlywheelSimulator } from "@/components/FlywheelSimulator";
 import { EcosystemTable } from "@/components/EcosystemTable";
 import { PairsTable } from "@/components/PairsTable";
@@ -116,13 +118,21 @@ export default function Home() {
           price={price}
         />
 
-        <BurnsChartAndTable
-          dailyHistory={burnsData?.dailyHistory || []}
-          burns={burnsData?.burns || []}
-          burnWallet={burnWallet}
-          currentPrice={price}
-          dailyBuybackPressure={dailyFees * 0.5}
-        />
+        {/* Standalone Candlestick & Burns Chart matching CoinMarketCap */}
+        <PriceCandleChart currentPrice={price} priceChange={priceChange} />
+
+        {/* Standalone Daily Buybacks Timeline & Recent Burns Live Feed Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" id="burns">
+          <DailyBuybacksChart
+            dailyHistory={burnsData?.dailyHistory || []}
+            dailyBuybackPressure={dailyFees * 0.5}
+            currentPrice={price}
+          />
+          <RecentBurnsTable
+            burns={burnsData?.burns || []}
+            burnWallet={burnWallet}
+          />
+        </div>
 
         <FlywheelSimulator
           price={price}
