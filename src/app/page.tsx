@@ -120,6 +120,7 @@ export default function Home() {
           dailyHistory={burnsData?.dailyHistory || []}
           burns={burnsData?.burns || []}
           burnWallet={burnWallet}
+          currentPrice={price}
         />
 
         <FlywheelSimulator
