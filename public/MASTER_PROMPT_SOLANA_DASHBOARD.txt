@@ -1,0 +1,206 @@
+================================================================================
+MISSION: BUILD A COMPLETE LIVE ON-CHAIN METRICS DASHBOARD FOR A SOLANA TOKEN
+================================================================================
+
+You are an expert Full-Stack Solana & Next.js Engineer.
+Your objective is to build a complete, production-grade, 9-page live on-chain metrics dashboard for the Solana token specified in the configuration below.
+The dashboard must be an exact clone in features, aesthetics, and architecture to stonk.fyi / ember.fyi.
+
+DO NOT build a simple mockup or leave placeholder TODOs. Build the ENTIRE working application with all 12 routes, live APIs, dark mode, charts, and interactive simulators.
+
+================================================================================
+SECTION 1: TOKEN CONFIGURATION (CUSTOMIZE THESE VARIABLES FOR ANY NEW TOKEN)
+================================================================================
+TOKEN_NAME: "EMBER"
+TOKEN_SYMBOL: "EMBER"
+TOKEN_MINT: "5dvXTZ5qwgafnHtwu3Ls3QrWx1U4LQsFeCuJgkk4QEC6"
+BURN_WALLET: "GZjYfGyUNQfDChcQ66Gc3ZMcQqPEisyRYe1nPyQhP9bp"
+MAIN_PAIR_ADDRESS: "6e4ewHhGZrBMiSkKat7QCx28dytJdnYrobNXWrPL5WFN"
+PRIMARY_DEX_NAME: "Meteora DLMM"
+INITIAL_SUPPLY: 1000000000
+THEME_ACCENT_HEX: "#f97316"
+THEME_ACCENT_GLOW: "rgba(249, 115, 22, 0.18)"
+BUY_LINK: "https://jup.ag/swap/SOL-5dvXTZ5qwgafnHtwu3Ls3QrWx1U4LQsFeCuJgkk4QEC6"
+================================================================================
+
+================================================================================
+SECTION 2: PROJECT INITIALIZATION & DEPENDENCIES
+================================================================================
+Run in terminal:
+npx create-next-app@latest token-metrics --typescript --tailwind --eslint --app --src-dir --import-alias "@/*" --use-npm
+cd token-metrics
+npm install recharts lucide-react
+
+================================================================================
+SECTION 3: GLOBAL CSS & COLOR THEME (src/app/globals.css)
+================================================================================
+Set up the core dark mode theme matching stonk.fyi in src/app/globals.css:
+- Background: #0b0e14
+- Surface 1 (Cards): #111622
+- Surface 2 (Pills/Hover): #182030
+- Surface 3: #222b40
+- Border: #1e293b
+- Border Strong: #334155
+- Text Primary: #f8fafc
+- Text Secondary: #94a3b8
+- Text Muted: #64748b
+- Accent: Use THEME_ACCENT_HEX
+- Accent Glow: Use THEME_ACCENT_GLOW
+- Up / Green: #22c55e
+- Down / Red: #ef4444
+- Caution / Amber: #f59e0b
+
+Core Utility Classes to Include:
+.card { background: #111622; border: 1px solid #1e293b; border-radius: 0.75rem; }
+.card:hover { border-color: #334155; }
+.live-dot { width: 7px; height: 7px; border-radius: 9999px; background: #22c55e; box-shadow: 0 0 8px #22c55e; animation: pulse-live 2s infinite ease-in-out; }
+.num { font-variant-numeric: tabular-nums; }
+.btn-buy { background: linear-gradient(135deg, THEME_ACCENT_HEX 0%, #ea580c 100%); color: #fff; box-shadow: 0 4px 14px THEME_ACCENT_GLOW; }
+
+================================================================================
+SECTION 4: CORE API ROUTES (Zero-Rate-Limit Architecture)
+================================================================================
+
+1. src/app/api/token/route.ts (Aggregated Token Metrics):
+- Query DexScreener API: https://api.dexscreener.com/latest/dex/tokens/{TOKEN_MINT}
+  Extract: priceUsd, priceChange.h24, volume.h24, fdv, liquidity.usd, and pairs list.
+- Query Solana Public RPC: https://api.mainnet-beta.solana.com (method: getTokenSupply with { mint: TOKEN_MINT })
+  Calculate:
+  * circulatingSupply = tokenSupply.uiAmount
+  * burnedSupply = INITIAL_SUPPLY - circulatingSupply
+  * burnedPercentage = (burnedSupply / INITIAL_SUPPLY) * 100
+  * marketCap = circulatingSupply * priceUsd
+  * volume24h = sum of all pairs 24h volume
+  * liquidity = sum of all pairs liquidity
+- Fallback: Always cache the last successful response so the frontend NEVER crashes on transient RPC 429s.
+
+2. src/app/api/burns/route.ts (Verified Action: BURN On-Chain Tracker):
+- CRITICAL MANDATE:
+  Do NOT return generic wallet transactions (e.g. Transfers of random tokens or Fees: Claim).
+  Filter STRICTLY for on-chain Action: BURN SPL Token instructions:
+  ix.program === "spl-token" && (ix.parsed?.type === "burn" || ix.parsed?.type === "burnChecked") && (ix.parsed?.info?.mint === TOKEN_MINT).
+- Every burn item MUST return:
+  { signature, shortSig, slot, blockTime, relativeTime, action: "BURN", token: TOKEN_SYMBOL, emberAmount, amount, usdValue, solscanUrl, isEmber: true }
+- Provide solscanBurnLedgerUrl:
+  https://solscan.io/account/{BURN_WALLET}#transfers?activity_type=ACTIVITY_SPL_BURN
+- Use AbortSignal.timeout(5000) on all RPC requests to prevent serverless execution hangs.
+- Maintain an in-memory verified ledger seeded with authentic on-chain burnChecked transactions, and dynamically poll for new ones.
+
+================================================================================
+SECTION 5: REUSABLE UI COMPONENTS (src/components/)
+================================================================================
+
+1. Header.tsx:
+- Flame/Token icon + Logo + [unofficial] badge.
+- Dropdown menus:
+  * Ecosystem (/platform, /flywheel, /tokens, /pairs, /launches, /rewards, /holders, /about)
+  * Analytics (Scorecard, Daily Timeline, Liquidity)
+  * Tools (Flywheel Simulator, Contract Copy)
+- Pulsing green live indicator (Live 30s sync).
+- "Buy ${TOKEN_SYMBOL}" button linking directly to Jupiter or DEX pool.
+- Full mobile-responsive drawer navigation.
+
+2. EcosystemSubnav.tsx:
+- Horizontal pill navigation bar rendered across all sub-pages with active tab highlighting:
+  Overview | Platform | Flywheel | Tokens | Pairs | Launches | Rewards | Holders | About.
+
+3. TickerBar.tsx:
+- High-visibility sticky bar with tabular-nums:
+  {TOKEN_SYMBOL}/USDC Price | 24h Change % | MCAP | 24H VOL | BURNED % | LAST BURN | ACTIVE PAIRS.
+
+4. SupplyDonutChart.tsx:
+- Recharts PieChart (ResponsiveContainer, innerRadius=65, outerRadius=90).
+- 2 segments: Burned (Accent orange) vs Circulating (Dark slate #1e293b).
+- Center text: Percentage burned and total tokens incinerated.
+- Fixed supply trust badges:
+  * Fixed 1.00B Supply minted once
+  * Mint authority renounced
+  * Freeze authority renounced
+  * 0% transfer tax
+
+5. Scorecard.tsx:
+- 6 quantitative signal tiles:
+  1. Burn Velocity (% burned / day) -> Bullish (> 0.1%/day)
+  2. Volume / Market Cap Ratio -> Bullish
+  3. Liquidity Depth -> Healthy
+  4. Fee Buyback Revenue / Day -> Bullish
+  5. Ecosystem Pairs Count -> Bullish
+  6. Mint & Freeze Renouncement -> Verified
+
+6. RecentBurnsTable.tsx:
+- Header with "Action: BURN" verified green badge and live sync indicator.
+- Table columns: When | Action (red pill badge BURN) | {TOKEN_SYMBOL} Burned | Value (USD) | Tx (Solscan).
+- Strictly displays verified {TOKEN_SYMBOL} burns (no confusing filters, no foreign tokens).
+- Clickable transaction signatures linking directly to https://solscan.io/tx/{signature}.
+- Footer link to Solscan with pre-filtered burn ledger:
+  https://solscan.io/account/{BURN_WALLET}#transfers?activity_type=ACTIVITY_SPL_BURN.
+
+7. FlywheelSimulator.tsx:
+- Interactive sliders for 24h Trading Volume ($1M - $100M) and Token Price ($0.005 - $0.50).
+- Real-time projections:
+  * Daily fees collected (1%)
+  * Daily buyback & burn pressure (50% of fees)
+  * Number of tokens burned per day
+  * Holder rewards payback (25%)
+  * SuperLotto prize jackpot (15%)
+
+8. DailyBuybacksChart.tsx:
+- Recharts BarChart showing historical daily buybacks & burns in USD over the past 7 days.
+
+9. PairsTable.tsx:
+- Filterable list of all trading pairs (Meteora DLMM, Raydium, etc.) with price, 24h volume, liquidity, and direct DexScreener link.
+
+10. Footer.tsx:
+- One-click copy for Token Contract Address ({TOKEN_MINT}) with "Copied!" toast feedback.
+- One-click copy for Burn Wallet ({BURN_WALLET}).
+- Solscan, DexScreener, Jupiter links, and standard disclaimer.
+
+================================================================================
+SECTION 6: THE 9 REQUIRED PAGES (src/app/)
+================================================================================
+
+1. src/app/page.tsx (Homepage / Overview):
+- Integrates Header, TickerBar, SupplyDonutChart, KPI Grid, Scorecard, RecentBurnsTable, FlywheelSimulator, PairsTable, Footer.
+
+2. src/app/platform/page.tsx:
+- Deep dive into platform architecture, bonding-curve mechanics, Meteora dynamic tax fees, and contract security.
+
+3. src/app/flywheel/page.tsx:
+- Complete flywheel breakdown, revenue allocation diagram (50% Burn, 25% Payback, 15% Lotto, 10% Team), DailyBuybacksChart, and FlywheelSimulator.
+
+4. src/app/tokens/page.tsx:
+- Catalog of all tokens launched through the bonding curve, market cap, 24h volume, and fees generated towards the burn wallet.
+
+5. src/app/pairs/page.tsx:
+- Full liquidity pools table with 24h volume, TVL, and fee APY.
+
+6. src/app/launches/page.tsx:
+- Graduation tracker from bonding curve to DEX pools, launch calendar, and bonding curve progress percentages.
+
+7. src/app/rewards/page.tsx:
+- Real-time holder dividend tracker, passive payback distribution metrics, and SuperLotto prize jackpot.
+
+8. src/app/holders/page.tsx:
+- Top holder distribution table, whale concentration analysis, and burn wallet share of initial supply.
+
+9. src/app/about/page.tsx:
+- Official mission, tokenomics breakdown, proof of renounced authorities, RPC data methodology, and FAQ.
+
+================================================================================
+SECTION 7: BUILD VERIFICATION & ZERO-ERROR TEST
+================================================================================
+1. Run "npm run build". Confirm that ALL 12 routes compile with 0 TypeScript/ESLint errors:
+   - /
+   - /platform
+   - /flywheel
+   - /tokens
+   - /pairs
+   - /launches
+   - /rewards
+   - /holders
+   - /about
+   - /api/token
+   - /api/burns
+2. Start server ("npm run start -- -p 3000") and verify that all 12 routes return HTTP 200.
+3. Confirm that all transaction links in RecentBurnsTable open Solscan directly to a confirmed on-chain burnChecked transaction.
+================================================================================
