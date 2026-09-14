@@ -52,7 +52,7 @@ export function Header({ loading, secondsAgo, onRefresh, ecosystemCount = 13 }: 
             title="Click to refresh live on-chain metrics"
           >
             <span className="live-dot" />
-            <span>{loading ? "syncing..." : `updated ${secondsAgo}s ago`}</span>
+            <span>{loading ? "syncing..." : secondsAgo < 60 ? `updated ${secondsAgo}s ago (5m sync)` : `updated ${Math.floor(secondsAgo / 60)}m ago (5m sync)`}</span>
             <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin text-orange-400" : ""}`} />
           </button>
 

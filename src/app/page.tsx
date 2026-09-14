@@ -40,7 +40,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 25000);
+    const interval = setInterval(fetchData, 300000) /* 5 minutes scan */;
     return () => clearInterval(interval);
   }, []);
 
@@ -121,6 +121,7 @@ export default function Home() {
           burns={burnsData?.burns || []}
           burnWallet={burnWallet}
           currentPrice={price}
+          dailyBuybackPressure={dailyFees * 0.5}
         />
 
         <FlywheelSimulator
