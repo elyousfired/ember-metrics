@@ -4,11 +4,14 @@ import React from "react";
 import { Flame } from "lucide-react";
 
 interface FooterProps {
-  contract: string;
-  burnWallet: string;
+  contract?: string;
+  burnWallet?: string;
 }
 
-export function Footer({ contract, burnWallet }: FooterProps) {
+export function Footer({
+  contract = "5dvXTZ5qwgafnHtwu3Ls3QrWx1U4LQsFeCuJgkk4QEC6",
+  burnWallet = "GZjYfGyUNQfDChcQ66Gc3ZMcQqPEisyRYe1nPyQhP9bp",
+}: FooterProps) {
   return (
     <footer className="border-t border-slate-800 bg-[#080b10] text-xs text-slate-500 py-6 px-4 sm:px-6 mt-12">
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
